@@ -124,6 +124,7 @@ void Guitarist::run (const uint32_t sample_count)
        ev = lv2_atom_sequence_next(ev))
     // LV2_ATOM_SEQUENCE_FOREACH (midi_in_ptr, ev)
     {
+        // Forward note to output
         lv2_atom_sequence_append_event(midi_out_ptr, out_capacity, ev);
 			
         if (ev->body.type == urids.atom_Blank || ev->body.type == urids.atom_Object) {
@@ -170,38 +171,17 @@ void Guitarist::run (const uint32_t sample_count)
             {
             case LV2_MIDI_MSG_NOTE_ON:
                 std::cerr << "Note " << std::to_string(msg[1]) << " ON (vel: " << std::to_string(msg[2]) << ")" << std::endl;
-                // Forward note to output
-                // lv2_atom_sequence_append_event(midi_out_ptr, out_capacity, ev);
-
-                // key.press
-                // (
-                //     static_cast<Waveform> (control[CONTROL_WAVEFORM]),
-                //     msg[1] /* note */,
-                //     msg[2] /* velocity */,
-                //     {
-                //         control[CONTROL_ATTACK],
-                //         control[CONTROL_DECAY],
-                //         control[CONTROL_SUSTAIN],
-                //         control[CONTROL_RELEASE]
-                //     }
-                // );
                 break;
 
             case LV2_MIDI_MSG_NOTE_OFF:
                 std::cerr << "Note " << std::to_string(msg[1]) << " OFF (vel: " << std::to_string(msg[2]) << ")" << std::endl;
-                // lv2_atom_sequence_append_event(midi_out_ptr, out_capacity, ev);
-                // key.release (msg[1], msg[2]);
                 break;
 
             // case LV2_MIDI_MSG_CONTROLLER:
-            //     lv2_atom_sequence_append_event(midi_out_ptr, out_capacity, ev);
             //     std::cerr << "Controller " << std::to_string(msg[1]) << ", " << std::to_string(msg[2]) << std::endl;
-            //     // if (msg[1] == LV2_MIDI_CTL_ALL_NOTES_OFF) key.release();
-            //     // else if (msg[1] == LV2_MIDI_CTL_ALL_SOUNDS_OFF) key.mute();
             //     break;
             
             default:
-                // lv2_atom_sequence_append_event(midi_out_ptr, out_capacity, ev);
                 std::cerr << "Default " << std::to_string(typ) << ", " << std::to_string(msg[1]) << ", " << std::to_string(msg[2]) << std::endl;
                 break;
             }
