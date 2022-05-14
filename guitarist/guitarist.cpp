@@ -47,6 +47,8 @@ private:
     LV2_URID_Map* map ;
     Urids urids;
     double rate;
+    void play(uint32_t begin, uint32_t end);
+    void update_position(const LV2_Atom_Object* obj);
 public:
     Guitarist (const double sample_rate, const LV2_Feature *const *features);
     void connectPort (const uint32_t port, void* data_location);
@@ -81,20 +83,16 @@ Guitarist::Guitarist (const double sample_rate, const LV2_Feature *const *featur
     urids.time_beatsPerBar = map->map (map->handle, LV2_TIME__beatsPerBar);
     urids.time_beat = map->map (map->handle, LV2_TIME__beat);
 }
-    
-
 
 void Guitarist::connectPort (const uint32_t port, void* data_location)
 {
     switch (port)
     {
     case PORT_MIDI_IN:
-        // midi_in_ptr = static_cast<const LV2_Atom_Sequence*> (data_location);
         midi_in_ptr = (const LV2_Atom_Sequence*)data_location;
         break;
 
     case PORT_MIDI_OUT:
-        // midi_out_ptr = static_cast<const LV2_Atom_Sequence*> (data_location);
         midi_out_ptr = (LV2_Atom_Sequence*)data_location;
         break;
     
@@ -115,83 +113,84 @@ void Guitarist::run (const uint32_t sample_count)
     lv2_atom_sequence_clear(midi_out_ptr);
     midi_out_ptr->atom.type = midi_in_ptr->atom.type;
 
-    /* analyze incomming MIDI data */
-    uint32_t last_frame = 0;
-    
-    
-    for (const LV2_Atom_Event* ev = lv2_atom_sequence_begin(&midi_in_ptr->body);
-       !lv2_atom_sequence_is_end(&midi_in_ptr->body, midi_in_ptr->atom.size, ev);
-       ev = lv2_atom_sequence_next(ev))
-    // LV2_ATOM_SEQUENCE_FOREACH (midi_in_ptr, ev)
+
+    LV2_ATOM_SEQUENCE_FOREACH (midi_in_ptr, ev)
     {
-        // Forward note to output
+        // TEMPORARY: Forward note to output
         lv2_atom_sequence_append_event(midi_out_ptr, out_capacity, ev);
-			
-        if (ev->body.type == urids.atom_Blank || ev->body.type == urids.atom_Object) {
-            lv2_atom_sequence_append_event(midi_out_ptr, out_capacity, ev);
-			const LV2_Atom_Object* obj = (LV2_Atom_Object*)&ev->body;
-			if (obj->body.otype == urids.time_Position) {
 
-                // Received new transport position/speed
-                LV2_Atom* barBeat  = NULL;
-                LV2_Atom* bpm   = NULL;
-                LV2_Atom* speed = NULL;
-                LV2_Atom* bar = NULL;
-                // LV2_Atom* beat = NULL;
-                // LV2_Atom* beatsPerBar = NULL;
+        const LV2_Atom_Object* obj = (LV2_Atom_Object*)&ev->body;
 
-                // clang-format off
-                lv2_atom_object_get(obj,
-                      urids.time_barBeat, &barBeat,
-                      urids.time_beatsPerMinute, &bpm,
-                      urids.time_speed, &speed,
-                      urids.time_bar, &bar,
-                    //   urids.time_beatsPerBar, &beatsPerBar,
-                    //   urids.time_beat, &beat,
-                      NULL);
-                // clang-format on
-            
-                // BPM ((LV2_Atom_Float*)bpm)->body
-
-                std::cerr << "time_bpm: " << std::to_string(((LV2_Atom_Float*)bpm)->body) << std::endl;
-                // std::cerr << "time_beatsPerBar: " << std::to_string(((LV2_Atom_Float*)bar)->body) << std::endl;
-                std::cerr << "time_bar: " << std::to_string(((LV2_Atom_Long*)bar)->body) << std::endl;
-                // std::cerr << "time_beat" << std::to_string(((LV2_Atom_Double*)beat)->body) << std::endl;
-				std::cerr << "time_barBeat: " << std::to_string(((LV2_Atom_Float*)barBeat)->body) << std::endl;
-                std::cerr << std::endl;
-
-			}
-		} else if (ev->body.type == urids.midi_MidiEvent)
+        if (ev->body.type == urids.atom_Blank || ev->body.type == urids.atom_Object) 
+        {
+			// if (obj->body.otype == urids.time_Position) {
+            //     update_position(obj);
+			// }
+		}
+        else if (ev->body.type == urids.midi_MidiEvent)
         {
             const uint8_t* const msg = reinterpret_cast<const uint8_t*> (ev + 1);
             const uint8_t typ = lv2_midi_message_type (msg);
+
+            int64_t time_frames = ev->time.frames;
 
             // lv2_atom_sequence_append_event(midi_out_ptr, out_capacity, ev);
             switch (typ)
             {
             case LV2_MIDI_MSG_NOTE_ON:
-                std::cerr << "Note " << std::to_string(msg[1]) << " ON (vel: " << std::to_string(msg[2]) << ")" << std::endl;
+                std::cerr << "Note " << std::to_string(msg[1]) << " ON (vel: " << std::to_string(msg[2]) << ") [" << std::to_string(time_frames) << "/" << std::to_string(sample_count) << "]" << std::endl;
                 break;
 
             case LV2_MIDI_MSG_NOTE_OFF:
-                std::cerr << "Note " << std::to_string(msg[1]) << " OFF (vel: " << std::to_string(msg[2]) << ")" << std::endl;
+                std::cerr << "Note " << std::to_string(msg[1]) << " OFF (vel: " << std::to_string(msg[2]) << ") [" << std::to_string(time_frames) << "/" << std::to_string(sample_count) << "]" << std::endl;
                 break;
-
-            // case LV2_MIDI_MSG_CONTROLLER:
-            //     std::cerr << "Controller " << std::to_string(msg[1]) << ", " << std::to_string(msg[2]) << std::endl;
-            //     break;
             
             default:
-                std::cerr << "Default " << std::to_string(typ) << ", " << std::to_string(msg[1]) << ", " << std::to_string(msg[2]) << std::endl;
+                std::cerr << "DEBUG Default " << std::to_string(typ) << ", " << std::to_string(msg[1]) << ", " << std::to_string(msg[2]) << std::endl;
                 break;
             }
         
         } else {
-            std::cerr << "BodyType: " << std::to_string(ev->body.type) << std::endl;
+            std::cerr << "DEBUG BodyType: " << std::to_string(ev->body.type) << std::endl;
         }
         
         
     }
+}
+
+void Guitarist::update_position(const LV2_Atom_Object* obj)
+{
+    LV2_Atom* barBeat  = NULL;
+    LV2_Atom* bpm   = NULL;
+    LV2_Atom* speed = NULL;
+    LV2_Atom* bar = NULL;
+    // LV2_Atom* beat = NULL;
+    // LV2_Atom* beatsPerBar = NULL;
+
+    // clang-format off
+    lv2_atom_object_get(obj,
+            urids.time_barBeat, &barBeat,
+            urids.time_beatsPerMinute, &bpm,
+            urids.time_speed, &speed,
+            urids.time_bar, &bar,
+        //   urids.time_beatsPerBar, &beatsPerBar,
+        //   urids.time_beat, &beat,
+            NULL);
+    // clang-format on
+
+    // BPM ((LV2_Atom_Float*)bpm)->body
+
+    std::cerr << "time_bpm: " << std::to_string(((LV2_Atom_Float*)bpm)->body) << std::endl;
+    // std::cerr << "time_beatsPerBar: " << std::to_string(((LV2_Atom_Float*)bar)->body) << std::endl;
+    std::cerr << "time_bar: " << std::to_string(((LV2_Atom_Long*)bar)->body) << std::endl;
+    // std::cerr << "time_beat" << std::to_string(((LV2_Atom_Double*)beat)->body) << std::endl;
+    std::cerr << "time_barBeat: " << std::to_string(((LV2_Atom_Float*)barBeat)->body) << std::endl;
+    std::cerr << std::endl;
+}
+
+void Guitarist::play(uint32_t begin, uint32_t end)
+{
+
 }
 
 /* internal core methods */
