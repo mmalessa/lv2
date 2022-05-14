@@ -15,7 +15,7 @@ make run-jalv
 make clean
 make uninstall
 ```
-* `make install` installs the plugin in the directory `~/.lv2/$(PLUGIN_NAME)`
+*`make install` installs the plugin in the directory `~/.lv2/$(PLUGIN_NAME)`
 
 ## Cross-references
 - https://lv2plug.in/book/
