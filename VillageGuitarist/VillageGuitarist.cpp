@@ -123,9 +123,12 @@ void VillageGuitarist::run (const uint32_t sample_count)
 
         if (ev->body.type == urids.atom_Blank || ev->body.type == urids.atom_Object) 
         {
-			// if (obj->body.otype == urids.time_Position) {
-            //     update_position(obj);
-			// }
+            if (obj->body.otype == urids.time_Position) {
+                int64_t time_frames = ev->time.frames;
+                std::cerr << "time.frames " << std::to_string(time_frames) << "/" << std::to_string(sample_count) << std::endl;
+			    update_position(obj);
+                std::cerr << std::endl;
+			}
 		}
         else if (ev->body.type == urids.midi_MidiEvent)
         {
@@ -133,25 +136,27 @@ void VillageGuitarist::run (const uint32_t sample_count)
             const uint8_t typ = lv2_midi_message_type (msg);
 
             int64_t time_frames = ev->time.frames;
+            std::cerr << "time.frames " << std::to_string(time_frames) << "/" << std::to_string(sample_count) << std::endl;
 
             // lv2_atom_sequence_append_event(midi_out_ptr, out_capacity, ev);
             switch (typ)
             {
             case LV2_MIDI_MSG_NOTE_ON:
-                std::cerr << "Note " << std::to_string(msg[1]) << " ON (vel: " << std::to_string(msg[2]) << ") [" << std::to_string(time_frames) << "/" << std::to_string(sample_count) << "]" << std::endl;
+                std::cerr << "Note " << std::to_string(msg[1]) << " ON (vel: " << std::to_string(msg[2]) << ")" << std::endl;
                 break;
 
             case LV2_MIDI_MSG_NOTE_OFF:
-                std::cerr << "Note " << std::to_string(msg[1]) << " OFF (vel: " << std::to_string(msg[2]) << ") [" << std::to_string(time_frames) << "/" << std::to_string(sample_count) << "]" << std::endl;
+                std::cerr << "Note " << std::to_string(msg[1]) << " OFF (vel: " << std::to_string(msg[2]) << ")" << std::endl;
                 break;
             
             default:
                 std::cerr << "DEBUG Default " << std::to_string(typ) << ", " << std::to_string(msg[1]) << ", " << std::to_string(msg[2]) << std::endl;
                 break;
             }
-        
+            std::cerr << std::endl;
         } else {
             std::cerr << "DEBUG BodyType: " << std::to_string(ev->body.type) << std::endl;
+            std::cerr << std::endl;
         }
         
         
@@ -185,7 +190,6 @@ void VillageGuitarist::update_position(const LV2_Atom_Object* obj)
     std::cerr << "time_bar: " << std::to_string(((LV2_Atom_Long*)bar)->body) << std::endl;
     // std::cerr << "time_beat" << std::to_string(((LV2_Atom_Double*)beat)->body) << std::endl;
     std::cerr << "time_barBeat: " << std::to_string(((LV2_Atom_Float*)barBeat)->body) << std::endl;
-    std::cerr << std::endl;
 }
 
 void VillageGuitarist::play(uint32_t begin, uint32_t end)
