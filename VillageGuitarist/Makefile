@@ -1,5 +1,8 @@
-PLUGIN_NAME = VillageGuitarist
-TARGET_DIRECTORY = ~/.lv2/$(PLUGIN_NAME).lv2
+-include ../.env.local
+
+PLUGIN_NAME ?= VillageGuitarist
+TARGET_DIRECTORY ?= ~/.lv2/$(PLUGIN_NAME).lv2
+RUN_TEST_SESSION_COMMAND ?= /opt/Ardour-6.9.0/bin/ardour6 ~/Sessions/my_test_session.ardour
 
 all:
 	g++ -fvisibility=hidden \
@@ -24,3 +27,6 @@ uninstall:
 
 run-jalv:
 	jalv.gtk3 https://github.com/mmalessa/lv2/$(PLUGIN_NAME)
+
+run-test-session:
+	$(RUN_TEST_SESSION_COMMAND)
